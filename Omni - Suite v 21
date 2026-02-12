@@ -1,0 +1,129 @@
+HTML
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Omni-Suite v21.0 - Provenance & Path Reconstruction</title>
+    <style>
+        :root { --primary: #1a73e8; --bg: #f8f9fa; --border: #dadce0; --sidebar: #202124; --path: #34a853; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; background: var(--bg); overflow: hidden; }
+        header { background: var(--primary); color: white; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; z-index: 100; }
+        
+        .main-layout { display: flex; flex: 1; overflow: hidden; }
+        .sidebar { width: 380px; background: var(--sidebar); color: #bdc1c6; display: flex; flex-direction: column; border-right: 1px solid #3c4043; }
+        .workspace { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
+        
+        /* Path Tracer UI */
+        .path-log { padding: 15px; background: #28292c; font-size: 11px; border-top: 2px solid var(--path); flex: 1; overflow-y: auto; }
+        .path-step { margin-bottom: 8px; padding-left: 15px; border-left: 2px solid #555; position: relative; }
+        .path-step::before { content: '●'; position: absolute; left: -6px; top: 0; color: var(--path); }
+
+        .node-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
+        .node-card { background: white; border: 1px solid var(--border); padding: 15px; border-radius: 10px; cursor: pointer; }
+        .node-card.active { border-color: var(--path); box-shadow: 0 0 12px rgba(52, 168, 83, 0.2); }
+        
+        .btn { padding: 8px 12px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; font-size: 12px; }
+        .btn-recover { background: var(--path); color: white; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div><strong>OMNI-SUITE</strong> <small>v21.0 Provenance Paths</small></div>
+    <div style="display:flex; gap:10px;">
+        <button class="btn btn-recover" onclick="optimizeRecovery()">⚡ Shortest Path Recovery</button>
+        <button class="btn" style="background:white; color:var(--primary)" onclick="linkVault()">🔗 Link Vault</button>
+    </div>
+</header>
+
+<div class="main-layout">
+    <div class="sidebar">
+        <div style="padding:20px; font-weight:bold; border-bottom:1px solid #3c4043;">PATH RECONSTRUCTION LEDGER</div>
+        <div class="path-log" id="path-tracer">
+            <p style="color:#888;">Select an entity to reconstruct its acquisition path.</p>
+        </div>
+        <div id="rebuild-queue" style="padding:15px; font-size:10px; color:#aaa; background:#1a1b1e;">
+            <strong>Optimized Rebuild Queue:</strong>
+            <div id="queue-list">Empty</div>
+        </div>
+    </div>
+
+    <div class="workspace">
+        <div class="node-grid" id="main-grid"></div>
+        <div id="log-output" style="font-family:monospace; font-size:11px; background:#000; color:#0f0; padding:10px; border-radius:8px; height:120px; overflow-y:auto;">
+            > Lineage Engine Standby...
+        </div>
+    </div>
+</div>
+
+<script>
+    let dirHandle;
+    let vault = { entities: {}, paths: {} };
+    let selectedId = null;
+
+    async function linkVault() {
+        dirHandle = await window.showDirectoryPicker();
+        const vFile = await dirHandle.getFileHandle('scrape_vault.json', { create: true });
+        const text = await (await vFile.getFile()).text();
+        vault = text ? JSON.parse(text) : { entities: {}, paths: {} };
+        renderGrid();
+        log("Vault Linked. Provenance vectors loaded.");
+    }
+
+    function renderGrid() {
+        const grid = document.getElementById('main-grid');
+        grid.innerHTML = '';
+        Object.keys(vault.entities).forEach(id => {
+            const e = vault.entities[id];
+            const card = document.createElement('div');
+            card.className = `node-card ${selectedId === id ? 'active' : ''}`;
+            card.onclick = () => tracePath(id);
+            card.innerHTML = `
+                <div style="font-size:10px; color:var(--path); font-weight:bold;">${e.subject}</div>
+                <div style="font-weight:bold;">${id}</div>
+                <div style="font-size:12px; margin-top:5px; color:#444;">${e.object.value}</div>
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    function tracePath(id) {
+        selectedId = id;
+        const tracer = document.getElementById('path-tracer');
+        const path = vault.paths[id] || ["Unknown Origin"];
+        
+        tracer.innerHTML = `<strong>Path for: ${id}</strong><hr style="border:1px solid #444; margin:10px 0;">`;
+        path.forEach((step, idx) => {
+            const div = document.createElement('div');
+            div.className = 'path-step';
+            div.innerText = step;
+            tracer.appendChild(div);
+        });
+        renderGrid();
+    }
+
+    async function optimizeRecovery() {
+        log("Calculating Shortest-Path Recovery Queue...");
+        // Logic: Sort sources by how many entities they define
+        const sourceWeights = {};
+        Object.values(vault.entities).forEach(e => {
+            const src = e.provenance || "Manual";
+            sourceWeights[src] = (sourceWeights[src] || 0) + 1;
+        });
+
+        const sortedQueue = Object.entries(sourceWeights).sort((a,b) => b[1] - a[1]);
+        const queueList = document.getElementById('queue-list');
+        queueList.innerHTML = sortedQueue.map(([src, count]) => `<div>[Weight ${count}] ${src.substring(0,30)}...</div>`).join('');
+        
+        log(`Recovery Plan: Re-scan ${sortedQueue.length} sources for maximum hydration.`);
+    }
+
+    function log(m) {
+        const o = document.getElementById('log-output');
+        o.innerHTML += `<div>> ${m}</div>`;
+        o.scrollTop = o.scrollHeight;
+    }
+</script>
+</body>
+</html>
