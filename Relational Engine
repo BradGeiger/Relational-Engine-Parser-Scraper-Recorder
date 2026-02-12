@@ -1,0 +1,223 @@
+   
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Relational Engine v10.0 - Master Suite</title>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>
+    <style>
+        :root { --primary: #1a73e8; --bg: #f8f9fa; --text: #3c4043; --success: #34a853; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; display: flex; flex-direction: column; height: 100vh; }
+        header { background: var(--primary); color: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .container { flex: 1; padding: 30px; overflow-y: auto; max-width: 1000px; margin: auto; width: 100%; box-sizing: border-box; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 25px; }
+        .logic-row { display: flex; gap: 10px; margin-bottom: 12px; padding: 10px; background: #f1f3f4; border-radius: 6px; }
+        .subject-block { border-left: 5px solid var(--primary); background: #ffffff; padding: 15px; margin-bottom: 15px; border-radius: 0 8px 8px 0; border: 1px solid #ddd; }
+        input, select, textarea { padding: 12px; border: 1px solid #dadce0; border-radius: 6px; flex: 1; font-family: inherit; }
+        button { padding: 12px 24px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        button:hover { opacity: 0.8; }
+        .btn-main { background: var(--primary); color: white; }
+        .btn-add { background: var(--success); color: white; }
+        .hidden { display: none; }
+        @media print { header, button, .nav-btn, .no-print { display: none !important; } .container { max-width: 100%; } .card { border: none; box-shadow: none; } }
+    </style>
+</head>
+<body>
+
+<header>
+    <div><strong>RELATIONAL ENGINE</strong> v10.0</div>
+    <div id="status" style="font-size: 12px;">Initializing Python Brain...</div>
+    <nav>
+        <button class="nav-btn" onclick="showSection('library')">Library</button>
+        <button class="nav-btn" onclick="showSection('architect')">Architect</button>
+        <button class="nav-btn" onclick="showSection('settings')">Settings</button>
+    </nav>
+</header>
+
+<div class="container">
+    <div id="section-library" class="section">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2>Template Library</h2>
+            <button class="btn-main" onclick="showSection('architect')">+ New Template</button>
+        </div>
+        <div id="library-list"></div>
+    </div>
+
+    <div id="section-architect" class="section hidden">
+        <h2>Logic Architect</h2>
+        <div class="card">
+            <input type="text" id="temp-name" placeholder="Template Name (e.g., Hotel Rooming List)" style="width: 100%; font-size: 1.2em; margin-bottom: 20px;">
+            <div id="logic-rows">
+                <div class="logic-row">
+                    <input type="text" class="lab" placeholder="Label">
+                    <select class="mode">
+                        <option value="PARENT_LOOP">Subject Definition [X]</option>
+                        <option value="MATCHED">Matched String (Global)</option>
+                        <option value="INDIVIDUAL">Individual String (Unique)</option>
+                        <option value="AUTO_DISCOVER">URL Auto-Discovery</option>
+                        <option value="WEB_SCRAPE">Web Scrape (Live)</option>
+                    </select>
+                    <input type="text" class="target" placeholder="Target Key / URL">
+                </div>
+            </div>
+            <button class="btn-add" onclick="addRow()">+ Add Logic Slot</button>
+            <button class="btn-main" style="width:100%; margin-top:15px;" onclick="saveTemplate()">Finalize Architecture</button>
+        </div>
+    </div>
+
+    <div id="section-wizard" class="section hidden">
+        <h2 id="wizard-title">Production Wizard</h2>
+        <div id="wizard-step1" class="card">
+            <h3>Step 1: Global Context</h3>
+            <div id="global-inputs"></div>
+            <button class="btn-main" style="width:100%; margin-top:20px;" onclick="generateWizardStep2()">Next: Individual Subjects</button>
+        </div>
+        <div id="wizard-step2" class="hidden">
+            <div id="individual-grid"></div>
+            <div class="card no-print">
+                <h3>Step 3: Distribution</h3>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <button class="btn-main" onclick="window.print()">Export PDF</button>
+                    <button class="btn-add" onclick="emailResults()">Email Results</button>
+                    <button style="background:#673ab7; color:white;" onclick="postToForm()">Post to Web Form</button>
+                    <button style="background:#5f6368; color:white;" onclick="exportJSON()">Copy Raw JSON</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="section-settings" class="section hidden">
+        <h2>Engine Configuration</h2>
+        <div class="card">
+            <h3>Email API (SendGrid)</h3>
+            <input type="password" id="api-key" placeholder="SendGrid API Key" style="width:100%;">
+            <input type="text" id="sender-email" placeholder="Verified Sender Email" style="width:100%; margin-top:10px;">
+        </div>
+        <div class="card">
+            <h3>Search Registry</h3>
+            <div id="registry-items"></div>
+            <button class="btn-add" onclick="addRegistryEntry()">+ Add Search Engine</button>
+        </div>
+        <div class="card">
+            <h3>Data Management</h3>
+            <button class="btn-main" onclick="backupLibrary()">Export Library (Base64)</button>
+            <button class="btn-add" style="background:#ff9800" onclick="importLibrary()">Import Library</button>
+        </div>
+    </div>
+</div>
+
+<div id="discovery-modal" class="hidden" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; align-items:center; justify-content:center;">
+    <div class="card" style="width:80%; max-height:80%; overflow-y:auto;">
+        <h3>Select Verified Source</h3>
+        <div id="search-results"></div>
+        <button class="btn-main" onclick="document.getElementById('discovery-modal').classList.add('hidden')">Close</button>
+    </div>
+</div>
+
+<script>
+    let pyodide;
+    let currentTemplate = null;
+
+    async function init() {
+        pyodide = await loadPyodide();
+        document.getElementById('status').innerText = "Engine Online";
+        loadLibrary();
+        renderRegistry();
+    }
+
+    function showSection(id) {
+        document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
+        document.getElementById('section-' + id).classList.remove('hidden');
+    }
+
+    function addRow() {
+        const row = document.querySelector('.logic-row').cloneNode(true);
+        row.querySelectorAll('input').forEach(i => i.value = '');
+        document.getElementById('logic-rows').appendChild(row);
+    }
+
+    // --- LIBRARY LOGIC ---
+    function saveTemplate() {
+        const name = document.getElementById('temp-name').value;
+        const logic = Array.from(document.querySelectorAll('.logic-row')).map(r => ({
+            label: r.querySelector('.lab').value,
+            mode: r.querySelector('.mode').value,
+            target: r.querySelector('.target').value
+        }));
+        localStorage.setItem('template_' + name, JSON.stringify(logic));
+        showSection('library');
+        loadLibrary();
+    }
+
+    function loadLibrary() {
+        const list = document.getElementById('library-list');
+        list.innerHTML = '';
+        Object.keys(localStorage).filter(k => k.startsWith('template_')).forEach(k => {
+            const name = k.replace('template_', '');
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.style.display = 'flex';
+            card.style.justifyContent = 'space-between';
+            card.innerHTML = `<strong>${name}</strong> <button class="btn-main" onclick="launchWizard('${k}')">Launch</button>`;
+            list.appendChild(card);
+        });
+    }
+
+    // --- WIZARD LOGIC ---
+    function launchWizard(key) {
+        currentTemplate = JSON.parse(localStorage.getItem(key));
+        document.getElementById('wizard-title').innerText = "Wizard: " + key.replace('template_', '');
+        const globals = document.getElementById('global-inputs');
+        globals.innerHTML = '';
+        currentTemplate.filter(q => q.mode !== 'INDIVIDUAL').forEach(q => {
+            globals.innerHTML += `<div style="margin-bottom:10px;"><label style="font-weight:bold;">${q.label}</label>
+            <input type="text" class="wiz-global" data-target="${q.target}" data-mode="${q.mode}"></div>`;
+        });
+        showSection('wizard');
+    }
+
+    function generateWizardStep2() {
+        const pLoop = currentTemplate.find(q => q.mode === 'PARENT_LOOP');
+        const count = parseInt(document.querySelector(`[data-target="${pLoop.target}"]`).value || 1);
+        const grid = document.getElementById('individual-grid');
+        grid.innerHTML = '';
+        for (let i = 1; i <= count; i++) {
+            let block = `<div class="subject-block"><h4>Subject ${i}</h4>`;
+            currentTemplate.filter(q => q.mode === 'INDIVIDUAL').forEach(q => {
+                block += `<label>${q.label}</label><input type="text" class="wiz-indiv" data-target="${q.target}" data-idx="${i}">`;
+            });
+            grid.innerHTML += block + `</div>`;
+        }
+        document.getElementById('wizard-step2').classList.remove('hidden');
+    }
+
+    // --- DISTRIBUTION LOGIC ---
+    function emailResults() {
+        const data = JSON.stringify(finalizeDataObject(), null, 2);
+        window.location.href = `mailto:?subject=Relational Data Export&body=${encodeURIComponent(data)}`;
+    }
+
+    function finalizeDataObject() {
+        const result = { globals: {}, individuals: [] };
+        document.querySelectorAll('.wiz-global').forEach(i => result.globals[i.dataset.target] = i.value);
+        document.querySelectorAll('.wiz-indiv').forEach(i => {
+            const idx = i.dataset.idx - 1;
+            if(!result.individuals[idx]) result.individuals[idx] = {};
+            result.individuals[idx][i.dataset.target] = i.value;
+        });
+        return result;
+    }
+
+    function exportJSON() {
+        const data = JSON.stringify(finalizeDataObject(), null, 2);
+        navigator.clipboard.writeText(data);
+        alert("JSON copied to clipboard!");
+    }
+
+    init();
+</script>
+</body>
+</html>
+
